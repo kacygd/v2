@@ -1,0 +1,126 @@
+-- Load Fluent UI library
+local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/main.lua"))()
+print("Fluent loaded:", Fluent ~= nil)
+
+-- Create UI window with Fluent
+local Window = Fluent:CreateWindow({
+    Title = "Auto Mining",
+    SubTitle = "by Grok",
+    TabWidth = 160,
+    Size = UDim2.new(0.8, 0, 0.6, 0), -- Use scale for mobile compatibility
+    Theme = "Dark",
+    Acrylic = true,
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+print("Window created:", Window ~= nil)
+
+-- Center the window
+Window.Position = UDim2.new(0.5, 0, 0.5, 0)
+Window.AnchorPoint = Vector2.new(0.5, 0.5)
+
+-- Create main tab
+local Tabs = {
+    Main = Window:AddTab({ Title = "Main", Icon = "wrench" })
+}
+print("Tab created:", Tabs.Main ~= nil)
+
+-- Show success notification
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+print("PlayerGui found:", playerGui ~= nil)
+
+local successMessage = Instance.new("ScreenGui")
+successMessage.Name = "SuccessMessage"
+successMessage.Parent = playerGui
+successMessage.IgnoreGuiInset = true
+successMessage.ResetOnSpawn = false
+
+local messageFrame = Instance.new("Frame")
+messageFrame.Size = UDim2.new(0.5, 0, 0.2, 0)
+messageFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+messageFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+messageFrame.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+messageFrame.BorderSizePixel = 0
+messageFrame.Parent = successMessage
+
+local messageText = Instance.new("TextLabel")
+messageText.Size = UDim2.new(1, 0, 1, 0)
+messageText.BackgroundTransparency = 1
+messageText.Text = "Script loaded successfully!"
+messageText.TextColor3 = Color3.fromRGB(255, 255, 255)
+messageText.TextSize = 20
+messageText.Parent = messageFrame
+
+-- Display notification for 2 seconds, then remove
+spawn(function()
+    wait(2)
+    successMessage:Destroy()
+end)
+
+print("Script loaded successfully!") -- Log to console
+
+-- State variable
+local isAutoDrilling = false
+local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- Function to hold E key
+local function holdKeyE(hold)
+    if hold then
+        if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+            -- On mobile: Simulate holding E key with continuous input
+            local viewportSize = game.Workspace.CurrentCamera.ViewportSize
+            local input = {
+                KeyCode = Enum.KeyCode.E,
+                UserInputType = Enum.UserInputType.Touch,
+                Position = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+            }
+            UserInputService.InputBegan:Fire(input)
+            print("Holding E on mobile (simulated)")
+        else
+            -- On PC: Hold E key
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            print("Holding E on PC")
+        end
+    else
+        if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+            -- On mobile: Release E key
+            local viewportSize = game.Workspace.CurrentCamera.ViewportSize
+            local input = {
+                KeyCode = Enum.KeyCode.E,
+                UserInputType = Enum.UserInputType.Touch,
+                Position = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+            }
+            UserInputService.InputEnded:Fire(input)
+            print("Released E on mobile (simulated)")
+        else
+            -- On PC: Release E key
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            print("Released E on PC")
+        end
+    end
+end
+
+-- Auto drill logic
+local drillLoop
+local toggleButton = Tabs.Main:AddToggle("AutoDrill", {
+    Title = "Auto Drill",
+    Default = false,
+    Callback = function(value)
+        isAutoDrilling = value
+        if isAutoDrilling then
+            holdKeyE(true)
+            drillLoop = game:GetService("RunService").Heartbeat:Connect(function()
+                holdKeyE(true) -- Continuously hold E key
+            end)
+            print("Auto drilling started")
+        else
+            if drillLoop then drillLoop:Disconnect() end
+            holdKeyE(false)
+            print("Auto drilling stopped")
+        end
+    end
+})
+
+-- Display UI window
+Window:SelectTab(1)
